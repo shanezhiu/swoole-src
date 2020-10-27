@@ -1518,27 +1518,28 @@ bool HttpClient::recv_http_response(double timeout) {
 
 bool HttpClient::upgrade(std::string path) {
     defer = false;
-    if (!websocket) {
-        char buf[SW_WEBSOCKET_KEY_LENGTH + 1];
-        zval *zheaders = sw_zend_read_and_convert_property_array(
-            swoole_http_client_coro_ce, zobject, ZEND_STRL("requestHeaders"), 0);
-        zend_update_property_string(
-            swoole_http_client_coro_ce, SW_Z8_OBJ_P(zobject), ZEND_STRL("requestMethod"), "GET");
-        create_token(SW_WEBSOCKET_KEY_LENGTH, buf);
-        add_assoc_string(zheaders, "Connection", (char *) "Upgrade");
-        add_assoc_string(zheaders, "Upgrade", (char *) "websocket");
-        add_assoc_string(zheaders, "Sec-WebSocket-Version", (char *) SW_WEBSOCKET_VERSION);
-        add_assoc_str_ex(zheaders,
-                         ZEND_STRL("Sec-WebSocket-Key"),
-                         php_base64_encode((const unsigned char *) buf, SW_WEBSOCKET_KEY_LENGTH));
-#ifdef SW_HAVE_ZLIB
-        if (websocket_compression) {
-            add_assoc_string(zheaders, "Sec-Websocket-Extensions", (char *) SW_WEBSOCKET_EXTENSION_DEFLATE);
-        }
-#endif
-        exec(path);
+    if (websocket) {
+        return true;
     }
-    return websocket;
+
+    char buf[SW_WEBSOCKET_KEY_LENGTH + 1];
+    zval *zheaders = sw_zend_read_and_convert_property_array(
+        swoole_http_client_coro_ce, zobject, ZEND_STRL("requestHeaders"), 0);
+    zend_update_property_string(
+        swoole_http_client_coro_ce, SW_Z8_OBJ_P(zobject), ZEND_STRL("requestMethod"), "GET");
+    create_token(SW_WEBSOCKET_KEY_LENGTH, buf);
+    add_assoc_string(zheaders, "Connection", (char *) "Upgrade");
+    add_assoc_string(zheaders, "Upgrade", (char *) "websocket");
+    add_assoc_string(zheaders, "Sec-WebSocket-Version", (char *) SW_WEBSOCKET_VERSION);
+    add_assoc_str_ex(zheaders,
+                        ZEND_STRL("Sec-WebSocket-Key"),
+                        php_base64_encode((const unsigned char *) buf, SW_WEBSOCKET_KEY_LENGTH));
+#ifdef SW_HAVE_ZLIB
+    if (websocket_compression) {
+        add_assoc_string(zheaders, "Sec-Websocket-Extensions", (char *) SW_WEBSOCKET_EXTENSION_DEFLATE);
+    }
+#endif
+    return exec(path);
 }
 
 bool HttpClient::push(zval *zdata, zend_long opcode, uint8_t flags) {
@@ -1570,8 +1571,8 @@ bool HttpClient::push(zval *zdata, zend_long opcode, uint8_t flags) {
         return false;
     }
 
-    swString *buffer = socket->get_write_buffer();
-    swString_clear(buffer);
+    String *buffer = socket->get_write_buffer();
+    buffer->clear();
     if (php_swoole_websocket_frame_is_object(zdata)) {
         if (php_swoole_websocket_frame_object_pack(buffer, zdata, websocket_mask, websocket_compression) < 0) {
             return false;

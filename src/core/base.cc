@@ -147,10 +147,10 @@ void swoole_init(void) {
         swSysWarn("getrlimit() failed");
     } else {
         SwooleG.max_sockets = SW_MAX((uint32_t) rlmt.rlim_cur, SW_MAX_SOCKETS_DEFAULT);
-        SwooleG.max_sockets = SW_MIN((uint32_t) rlmt.rlim_cur, SW_SESSION_LIST_SIZE);
+        SwooleG.max_sockets = SW_MIN(SwooleG.max_sockets, SW_SESSION_LIST_SIZE);
     }
 
-    SwooleTG.buffer_stack = swString_new(SW_STACK_BUFFER_SIZE);
+    SwooleTG.buffer_stack = new String(SW_STACK_BUFFER_SIZE);
     if (SwooleTG.buffer_stack == nullptr) {
         exit(3);
     }
